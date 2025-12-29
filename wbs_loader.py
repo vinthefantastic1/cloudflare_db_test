@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Sequence, Optional
 from dotenv import load_dotenv
 import datetime
+import time
 
 # Load environment variables from .env file
 load_dotenv()
@@ -169,20 +170,38 @@ class WBSD1Manager:
         self.d1 = d1_client
         
     def create_comprehensive_wbs_table(self) -> dict[str, Any]:
-        """Create a simple WBS table with just the first 2 columns"""
+        """Create a simple WBS table with just the first 2 columns plus CREATE_DATE"""
         sql = """
         CREATE TABLE IF NOT EXISTS "wbs" (
             "WBS_ELEMENT_CDE" TEXT PRIMARY KEY,
-            "WBS_ELEMENT_DESC" TEXT
+            "WBS_ELEMENT_DESC" TEXT,
+            "CREATE_DATE" DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         """
         return self.d1.query(sql)
+        
+    def recreate_wbs_table_with_CREATE_DATE(self) -> dict[str, Any]:
+        """Drop and recreate the WBS table with CREATE_DATE column"""
+        # First drop the existing table
+        drop_sql = 'DROP TABLE IF EXISTS "wbs";'
+        self.d1.query(drop_sql)
+        
+        # Then create the new table with CREATE_DATE column
+        create_sql = """
+        CREATE TABLE "wbs" (
+            "WBS_ELEMENT_CDE" TEXT PRIMARY KEY,
+            "WBS_ELEMENT_DESC" TEXT,
+            "CREATE_DATE" DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        return self.d1.query(create_sql)
         
     def insert_wbs_record(self, record: dict[str, Any]) -> dict[str, Any]:
         """Insert a single WBS record into the database"""
         # Map Excel columns to database columns
         # Excel: WBS_ELEMENT_CDE -> Database: WBS_ELEMENT_CDE
         # Excel: WBS_ELEMENT_NME -> Database: WBS_ELEMENT_DESC
+        # CREATE_DATE will be set to current timestamp
         
         wbs_code = record.get("WBS_ELEMENT_CDE")
         wbs_desc = record.get("WBS_ELEMENT_NME")  # Excel column name
@@ -196,8 +215,8 @@ class WBSD1Manager:
         values = [wbs_code, wbs_desc]
         
         sql = """
-        INSERT OR REPLACE INTO "wbs" ("WBS_ELEMENT_CDE", "WBS_ELEMENT_DESC")
-        VALUES (?, ?);
+        INSERT OR REPLACE INTO "wbs" ("WBS_ELEMENT_CDE", "WBS_ELEMENT_DESC", "CREATE_DATE")
+        VALUES (?, ?, CURRENT_TIMESTAMP);
         """
         
         return self.d1.query(sql, params=values)
@@ -258,7 +277,7 @@ def main() -> int:
     try:
         excel_loader = WBSExcelLoader(excel_file)
         # Load only first 10 records as requested
-        data = excel_loader.load_data(nrows=10)
+        data = excel_loader.load_data(nrows=20)
         records = excel_loader.get_wbs_records()
         
         print(f"\n📊 Loaded {len(records)} records from Excel")
@@ -272,10 +291,26 @@ def main() -> int:
     # Setup database table
     try:
         print("\n🔧 Setting up database table...")
-        create_result = wbs_manager.create_comprehensive_wbs_table()
-        print("✓ Table created/verified successfully")
         
-        # Show table info
+        # Check if we need to recreate the table with CREATE_DATE column
+        try:
+            table_info = wbs_manager.get_table_info()
+            result = table_info.get("result", [])
+            columns = [row[1] for row in result if len(row) > 1] if result else []
+            
+            if "CREATE_DATE" not in columns:
+                print("🔄 Recreating table with CREATE_DATE column...")
+                recreate_result = wbs_manager.recreate_wbs_table_with_CREATE_DATE()
+                print("✓ Table recreated successfully with CREATE_DATE column")
+            else:
+                print("✓ Table already has CREATE_DATE column")
+                
+        except Exception as check_error:
+            print(f"⚠️  Could not check table structure, creating new table: {check_error}")
+            create_result = wbs_manager.create_comprehensive_wbs_table()
+            print("✓ Table created successfully")
+        
+        # Show final table info
         try:
             table_info = wbs_manager.get_table_info()
             print("✓ Retrieved table information")
@@ -284,7 +319,7 @@ def main() -> int:
             result = table_info.get("result", [])
             if result and len(result) > 0:
                 columns = [row[1] for row in result if len(row) > 1]
-                print(f"   Table columns ({len(columns)}): {columns[:5]}..." if len(columns) > 5 else f"   Table columns: {columns}")
+                print(f"   Table columns ({len(columns)}): {columns}")
             else:
                 print("   Table info result is empty, but table exists")
                 
@@ -299,7 +334,14 @@ def main() -> int:
     # Insert records
     try:
         print(f"\n📝 Inserting {len(records)} records into D1 database...")
+        
+        # Start timing
+        start_time = time.time()
         results = wbs_manager.batch_insert_wbs_records(records)
+        end_time = time.time()
+        
+        # Calculate elapsed time
+        elapsed_time = end_time - start_time
         
         # Count successful insertions
         successful = sum(1 for r in results if "error" not in r)
@@ -308,6 +350,8 @@ def main() -> int:
         print(f"\n📊 Import Summary:")
         print(f"   ✓ Successfully inserted: {successful}")
         print(f"   ❌ Failed: {failed}")
+        print(f"   ⏱️  Insert elapsed time: {elapsed_time:.2f} seconds")
+        print(f"   📈 Average time per record: {(elapsed_time/len(records)):.3f} seconds")
         
         # Show final record count
         count_result = wbs_manager.count_records()
