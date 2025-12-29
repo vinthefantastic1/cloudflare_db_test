@@ -19,6 +19,8 @@ from typing import Any, Sequence, Optional
 from flask import Flask, render_template, request, jsonify, flash
 from dotenv import load_dotenv
 import datetime
+import time
+from functools import lru_cache
 
 # Load environment variables from .env file
 load_dotenv()
@@ -100,6 +102,27 @@ class WBSLister:
     
     def __init__(self, d1_client: D1Client):
         self.d1 = d1_client
+        self._cache = {}
+        self._cache_timeout = 300  # 5 minutes
+        
+    def _is_cache_valid(self, cache_key: str) -> bool:
+        """Check if cache entry is still valid"""
+        if cache_key not in self._cache:
+            return False
+        return time.time() - self._cache[cache_key]['timestamp'] < self._cache_timeout
+        
+    def _get_from_cache(self, cache_key: str):
+        """Get data from cache if valid"""
+        if self._is_cache_valid(cache_key):
+            return self._cache[cache_key]['data']
+        return None
+        
+    def _set_cache(self, cache_key: str, data):
+        """Store data in cache"""
+        self._cache[cache_key] = {
+            'data': data,
+            'timestamp': time.time()
+        }
         
     def _extract_results(self, d1_response: dict[str, Any]) -> list[dict]:
         """Extract actual results from D1 response format"""
@@ -129,16 +152,31 @@ class WBSLister:
         return results
         
     def get_all_wbs_items(self, limit: Optional[int] = None, offset: int = 0) -> list[dict]:
-        """Get all WBS items from the database"""
-        sql = "SELECT * FROM wbs ORDER BY WBS_ELEMENT_CDE"
+        """Get all WBS items from the database with caching"""
+        cache_key = f"wbs_items_{limit}_{offset}"
+        
+        # Check cache first
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            print(f"📋 Using cached result for {cache_key}")
+            return cached_result
+        
+        # Filter out NULL records for better performance
+        sql = "SELECT * FROM wbs WHERE WBS_ELEMENT_CDE IS NOT NULL ORDER BY WBS_ELEMENT_CDE"
         
         if limit:
             sql += f" LIMIT {limit} OFFSET {offset}"
             
         print(f"🔍 Executing query: {sql}")
+        start_time = time.time()
         result = self.d1.query(sql)
+        query_time = time.time() - start_time
+        
         extracted_results = self._extract_results(result)
-        print(f"📊 Extracted {len(extracted_results)} items")
+        print(f"📊 Extracted {len(extracted_results)} items in {query_time:.2f}s")
+        
+        # Cache the result
+        self._set_cache(cache_key, extracted_results)
         
         if extracted_results:
             print(f"🔍 First item sample: {extracted_results[0]}")
@@ -146,14 +184,25 @@ class WBSLister:
         return extracted_results
         
     def count_wbs_items(self) -> int:
-        """Get the total count of WBS items"""
-        result = self.d1.query("SELECT COUNT(*) as total FROM wbs")
+        """Get the total count of WBS items with caching"""
+        cache_key = "wbs_count"
+        
+        # Check cache first
+        cached_result = self._get_from_cache(cache_key)
+        if cached_result is not None:
+            return cached_result
+        
+        # Only count non-NULL records for accuracy
+        result = self.d1.query("SELECT COUNT(*) as total FROM wbs WHERE WBS_ELEMENT_CDE IS NOT NULL")
         extracted_results = self._extract_results(result)
         
+        count = 0
         if extracted_results and len(extracted_results) > 0:
-            return extracted_results[0].get("total", 0)
+            count = extracted_results[0].get("total", 0)
         
-        return 0
+        # Cache the result
+        self._set_cache(cache_key, count)
+        return count
         
     def search_wbs_items(self, search_term: str) -> list[dict]:
         """Search for WBS items by code or description"""
@@ -225,9 +274,9 @@ except Exception as e:
 
 @app.route('/')
 def index():
-    """Main page showing WBS items with pagination"""
+    """Main page showing WBS items with optimized pagination"""
     page = request.args.get('page', 1, type=int)
-    per_page = 20  # Items per page
+    per_page = 15  # Reduced from 20 for faster loading
     search_term = request.args.get('search', '', type=str)
     
     if not wbs_lister:
@@ -236,6 +285,8 @@ def index():
                              error_message="Database connection could not be established")
     
     try:
+        start_time = time.time()
+        
         if search_term:
             # Search functionality
             items = wbs_lister.search_wbs_items(search_term)
@@ -247,7 +298,7 @@ def index():
             items = items[start_idx:end_idx]
             
         else:
-            # Regular pagination
+            # Optimized pagination - get count and items efficiently
             total_count = wbs_lister.count_wbs_items()
             offset = (page - 1) * per_page
             items = wbs_lister.get_all_wbs_items(limit=per_page, offset=offset)
@@ -255,8 +306,13 @@ def index():
         # Calculate pagination info
         total_pages = (total_count + per_page - 1) // per_page
         
-        # Get stats for dashboard
-        stats = wbs_lister.get_wbs_stats() if not search_term else None
+        # Get stats only for first page and non-search views to reduce load time
+        stats = None
+        if page == 1 and not search_term:
+            stats = wbs_lister.get_wbs_stats()
+        
+        load_time = time.time() - start_time
+        print(f"⚡ Page loaded in {load_time:.2f}s")
         
         return render_template('index.html', 
                              items=items,
