@@ -124,19 +124,26 @@ class WBSExcelLoader:
         else:
             return str(value)
         
-    def load_data(self, nrows: Optional[int] = None) -> pd.DataFrame:
+    def load_data(self, nrows: Optional[int] = None, skiprows: Optional[int] = None) -> pd.DataFrame:
         """Load the Excel file and return the DataFrame"""
         try:
             if not self.file_path.exists():
                 raise FileNotFoundError(f"Excel file not found: {self.file_path}")
                 
             print(f"📖 Reading Excel file: {self.file_path}")
+            if skiprows:
+                print(f"   Skipping first {skiprows} rows...")
             if nrows:
-                print(f"   Loading first {nrows} rows...")
+                print(f"   Loading {nrows} rows...")
                 
             # Load only the first 2 columns (WBS_ELEMENT_CDE and WBS_ELEMENT_DESC)
             print("   Loading first 2 columns only...")
-            self.data = pd.read_excel(self.file_path, nrows=nrows, usecols=[0, 1])
+            self.data = pd.read_excel(
+                self.file_path, 
+                nrows=nrows, 
+                skiprows=skiprows,
+                usecols=[0, 1]
+            )
             print(f"✓ Successfully loaded {len(self.data)} rows and {len(self.data.columns)} columns")
             
             # Clean column names (remove extra spaces, normalize)
@@ -221,24 +228,148 @@ class WBSD1Manager:
         
         return self.d1.query(sql, params=values)
         
-    def batch_insert_wbs_records(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        """Insert multiple WBS records"""
-        results = []
+    def batch_insert_wbs_records(self, records: list[dict[str, Any]], batch_size: int = 50) -> tuple[int, int, str]:
+        """Insert multiple WBS records using true bulk insert with batching
+        Returns: (successful_count, skipped_count, method_used)
+        """
+        if not records:
+            return 0, 0, "No records"
         
+        print(f"   🚀 Processing {len(records)} records with bulk insert (batch size: {batch_size})...")
+        
+        # Process in batches to avoid URL/payload size limits
+        total_successful = 0
+        total_skipped = 0
+        
+        for batch_start in range(0, len(records), batch_size):
+            batch_end = min(batch_start + batch_size, len(records))
+            batch_records = records[batch_start:batch_end]
+            
+            print(f"   📦 Processing batch {batch_start//batch_size + 1}: records {batch_start+1}-{batch_end}")
+            
+            batch_successful, batch_skipped = self._process_batch(batch_records)
+            total_successful += batch_successful
+            total_skipped += batch_skipped
+        
+        return total_successful, total_skipped, f"Bulk INSERT OR IGNORE ({len(range(0, len(records), batch_size))} batches)"
+        
+    def _process_batch(self, records: list[dict[str, Any]]) -> tuple[int, int]:
+        """Process a single batch of records
+        Returns: (successful_count, skipped_count)
+        """
+        try:
+            # Build VALUES clauses for bulk insert
+            values_clauses = []
+            params = []
+            
+            for record in records:
+                values_clauses.append("(?, ?, CURRENT_TIMESTAMP)")
+                
+                # Handle both named columns and numeric column indices
+                if "WBS_ELEMENT_CDE" in record:
+                    wbs_code = record.get("WBS_ELEMENT_CDE", "")
+                else:
+                    # Fallback to first column if headers are missing
+                    first_col = list(record.keys())[0] if record else ""
+                    wbs_code = record.get(first_col, "")
+                
+                if "WBS_ELEMENT_NME" in record:
+                    wbs_desc = record.get("WBS_ELEMENT_NME", "")
+                else:
+                    # Fallback to second column if headers are missing  
+                    second_col = list(record.keys())[1] if len(record.keys()) > 1 else ""
+                    wbs_desc = record.get(second_col, "")
+                
+                # Convert empty strings to None
+                params.extend([
+                    None if wbs_code == "" else wbs_code,
+                    None if wbs_desc == "" else wbs_desc
+                ])
+                
+            
+            # Single bulk INSERT with IGNORE to skip duplicates
+            sql = f"""
+            INSERT OR IGNORE INTO "wbs" ("WBS_ELEMENT_CDE", "WBS_ELEMENT_DESC", "CREATE_DATE")
+            VALUES {', '.join(values_clauses)}
+            """
+            
+            result = self.d1.query(sql, params=params)
+            
+            # Get number of actual insertions from D1 response format
+            result_data = result.get("result", [])
+            if result_data and len(result_data) > 0:
+                changes = result_data[0].get("meta", {}).get("changes", 0)
+            else:
+                changes = 0
+            skipped = len(records) - changes
+            
+            print(f"   ✅ Batch completed: {changes} new, {skipped} skipped")
+            
+            return changes, skipped
+            
+        except Exception as e:
+            print(f"   ❌ Batch failed: {e}")
+            print(f"   🔄 Falling back to individual inserts for this batch...")
+            return self._fallback_batch_individual_inserts(records)
+            
+    def _fallback_batch_individual_inserts(self, records: list[dict[str, Any]]) -> tuple[int, int]:
+        """Fallback method for individual inserts with NOT EXISTS check
+        Returns: (successful_count, skipped_count, method_used)
+        """
+        successful_count = 0
+        skipped_count = 0
+        
+        sql = """
+        INSERT INTO "wbs" ("WBS_ELEMENT_CDE", "WBS_ELEMENT_DESC", "CREATE_DATE")
+        SELECT ?, ?, CURRENT_TIMESTAMP
+        WHERE NOT EXISTS (
+            SELECT 1 FROM "wbs" WHERE "WBS_ELEMENT_CDE" = ?
+        )
+        """
+        
+        print("   📝 Processing records individually (skipping existing)...")
         for i, record in enumerate(records, 1):
             try:
-                wbs_code = record.get("WBS_ELEMENT_CDE", f"Record_{i}")
-                print(f"   📝 Inserting record {i}: {wbs_code}")
+                # Handle both named columns and numeric column indices
+                if "WBS_ELEMENT_CDE" in record:
+                    wbs_code = record.get("WBS_ELEMENT_CDE", "")
+                else:
+                    first_col = list(record.keys())[0] if record else ""
+                    wbs_code = record.get(first_col, "")
+                    
+                if "WBS_ELEMENT_NME" in record:
+                    wbs_desc = record.get("WBS_ELEMENT_NME", "")
+                else:
+                    second_col = list(record.keys())[1] if len(record.keys()) > 1 else ""
+                    wbs_desc = record.get(second_col, "")
                 
-                result = self.insert_wbs_record(record)
-                results.append(result)
-                print(f"   ✓ Successfully inserted {wbs_code}")
+                # Convert empty strings to None
+                if wbs_code == "":
+                    wbs_code = None
+                if wbs_desc == "":
+                    wbs_desc = None
                 
+                result = self.d1.query(sql, params=[wbs_code, wbs_desc, wbs_code])
+                
+                # Check if record was actually inserted from D1 response format
+                result_data = result.get("result", [])
+                if result_data and len(result_data) > 0:
+                    changes = result_data[0].get("meta", {}).get("changes", 0)
+                else:
+                    changes = 0
+                
+                if changes > 0:
+                    print(f"   ✓ Inserted new record {i}: {wbs_code}")
+                    successful_count += 1
+                else:
+                    print(f"   ⏭️  Skipped existing record {i}: {wbs_code}")
+                    skipped_count += 1
+                    
             except Exception as e:
-                print(f"   ❌ Failed to insert record {i}: {e}")
-                results.append({"error": str(e)})
-                
-        return results
+                print(f"   ❌ Failed to process record {i}: {e}")
+                skipped_count += 1
+        
+        return successful_count, skipped_count
         
     def get_table_info(self) -> dict[str, Any]:
         """Get information about the WBS table structure"""
@@ -276,13 +407,20 @@ def main() -> int:
         
     try:
         excel_loader = WBSExcelLoader(excel_file)
-        # Load only first 10 records as requested
-        data = excel_loader.load_data(nrows=20)
+        # Load configuration - you can modify these values
+        max_rows = 200      # Number of rows to read (None for all)
+        skip_rows = 10      # Number of rows to skip from the top (0 for none)
+        
+        data = excel_loader.load_data(nrows=max_rows, skiprows=skip_rows)
         records = excel_loader.get_wbs_records()
         
         print(f"\n📊 Loaded {len(records)} records from Excel")
+        print(f"   📋 Column names detected: {list(data.columns)}")
         if records:
-            print("   Sample columns:", list(records[0].keys())[:5])
+            print("   🔍 Sample record keys:", list(records[0].keys())[:5])
+            print("   📝 First record values:")
+            for key, value in list(records[0].items())[:2]:
+                print(f"      {key}: {value}")
             
     except Exception as e:
         print(f"❌ Failed to load Excel data: {e}")
@@ -337,26 +475,34 @@ def main() -> int:
         
         # Start timing
         start_time = time.time()
-        results = wbs_manager.batch_insert_wbs_records(records)
+        successful, skipped, method_used = wbs_manager.batch_insert_wbs_records(records)
         end_time = time.time()
         
         # Calculate elapsed time
         elapsed_time = end_time - start_time
         
-        # Count successful insertions
-        successful = sum(1 for r in results if "error" not in r)
-        failed = len(results) - successful
-        
         print(f"\n📊 Import Summary:")
-        print(f"   ✓ Successfully inserted: {successful}")
-        print(f"   ❌ Failed: {failed}")
-        print(f"   ⏱️  Insert elapsed time: {elapsed_time:.2f} seconds")
-        print(f"   📈 Average time per record: {(elapsed_time/len(records)):.3f} seconds")
+        print(f"   ✅ Successfully inserted (new): {successful}")
+        print(f"   ⏭️  Skipped (existing): {skipped}")
+        print(f"   🚀 Method used: {method_used}")
+        print(f"\n⏱️  ═══════════════════════════════════════")
+        print(f"⏱️  📊 PERFORMANCE METRICS")
+        print(f"⏱️  ═══════════════════════════════════════")
+        print(f"⏱️  🕐 Total elapsed time: {elapsed_time:.3f} seconds")
+        if successful > 0:
+            print(f"⏱️  ⚡ Average per new record: {(elapsed_time/successful):.3f} seconds")
+            print(f"⏱️  🚀 New records per second: {(successful/elapsed_time):.1f}")
+        print(f"⏱️  ═══════════════════════════════════════")
         
-        # Show final record count
+        # Show final record count with D1 response format handling
         count_result = wbs_manager.count_records()
-        total_records = count_result.get("result", [{}])[0].get("record_count", 0)
-        print(f"   📈 Total records in database: {total_records}")
+        result_data = count_result.get("result", [])
+        if result_data and len(result_data) > 0:
+            actual_results = result_data[0].get("results", [])
+            total_records = actual_results[0].get("record_count", 0) if actual_results else 0
+        else:
+            total_records = 0
+        print(f"\n   📈 Total records in database: {total_records}")
         
     except Exception as e:
         print(f"❌ Insert operation failed: {e}")
