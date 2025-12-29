@@ -101,10 +101,26 @@ class WBSLister:
         
     def _extract_results(self, d1_response: dict[str, Any]) -> list[dict]:
         """Extract actual results from D1 response format"""
+        if not d1_response or not isinstance(d1_response, dict):
+            print(f"⚠️  Invalid response format: {type(d1_response)}")
+            return []
+            
         result_data = d1_response.get("result", [])
-        if result_data and len(result_data) > 0:
-            return result_data[0].get("results", [])
-        return []
+        if not result_data or len(result_data) == 0:
+            print(f"⚠️  No result data found in response")
+            return []
+            
+        first_result = result_data[0]
+        if not first_result or not isinstance(first_result, dict):
+            print(f"⚠️  Invalid first result format: {type(first_result)}")
+            return []
+            
+        results = first_result.get("results", [])
+        if not isinstance(results, list):
+            print(f"⚠️  Results is not a list: {type(results)}")
+            return []
+            
+        return results
         
     def get_all_wbs_items(self, limit: Optional[int] = None, offset: int = 0) -> list[dict]:
         """Get all WBS items from the database"""
@@ -113,8 +129,13 @@ class WBSLister:
         if limit:
             sql += f" LIMIT {limit} OFFSET {offset}"
             
+        print(f"🔍 Executing query: {sql}")
         result = self.d1.query(sql)
-        return self._extract_results(result)
+        extracted = self._extract_results(result)
+        print(f"📊 Extracted {len(extracted)} items")
+        if extracted:
+            print(f"🔍 First item sample: {extracted[0]}")
+        return extracted
         
     def count_wbs_items(self) -> int:
         """Get the total count of WBS items"""
@@ -149,7 +170,8 @@ class WBSLister:
         """Check if the WBS table exists"""
         try:
             result = self.d1.query("SELECT name FROM sqlite_master WHERE type='table' AND name='wbs';")
-            tables = result.get("result", [])
+            # Use the same extraction method as other queries
+            tables = self._extract_results(result)
             return len(tables) > 0
         except Exception:
             return False
@@ -169,9 +191,21 @@ class WBSLister:
         
         # Display items
         for i, item in enumerate(items, 1):
-            code = item.get("WBS_ELEMENT_CDE", "N/A")[:24]
-            desc = item.get("WBS_ELEMENT_DESC", "N/A")[:34]
+            if item is None:
+                print(f"{i:<4} {'NULL':<25} {'NULL ITEM':<35} {'N/A':<14}")
+                continue
+                
+            if not isinstance(item, dict):
+                print(f"{i:<4} {'ERROR':<25} {'INVALID ITEM TYPE':<35} {'N/A':<14}")
+                continue
+                
+            code = item.get("WBS_ELEMENT_CDE", "N/A")
+            desc = item.get("WBS_ELEMENT_DESC", "N/A")
             created = item.get("CREATE_DATE", "N/A")
+            
+            # Safely truncate strings
+            code = str(code)[:24] if code is not None else "N/A"
+            desc = str(desc)[:34] if desc is not None else "N/A"
             
             # Format date if it's a timestamp
             if created != "N/A" and created:
