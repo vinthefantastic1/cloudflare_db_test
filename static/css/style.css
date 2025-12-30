@@ -1,0 +1,315 @@
+/* Custom CSS for WBS Management System */
+
+/* General Styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Navigation */
+.navbar-brand {
+    font-size: 1.5rem;
+}
+
+/* Cards */
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease;
+    background-color: #ffffff !important;
+    color: #212529 !important;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* WBS Cards - Ensure high contrast and readability */
+.wbs-card {
+    background-color: #ffffff !important;
+    border: 1px solid #e0e0e0 !important;
+}
+
+.wbs-card .card-title {
+    color: #0d6efd !important;
+    font-weight: 600;
+}
+
+.wbs-card .card-title a {
+    color: #0d6efd !important;
+    text-decoration: none;
+}
+
+.wbs-card .card-title a:hover {
+    color: #0b5ed7 !important;
+    text-decoration: underline;
+}
+
+.wbs-card .card-text {
+    color: #6c757d !important;
+}
+
+/* Custom badge colors for item detail */
+.bg-purple {
+    background-color: #6f42c1 !important;
+    color: white !important;
+}
+
+.wbs-card .card-footer {
+    background-color: #f8f9fa !important;
+    border-top: 1px solid #e0e0e0 !important;
+}
+
+.wbs-card .card-footer small {
+    color: #6c757d !important;
+}
+
+/* Search Input */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Search Suggestions */
+.search-suggestions {
+    border-radius: 0 0 0.375rem 0.375rem;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    max-height: 400px;
+    overflow-y: auto;
+    display: none;
+}
+
+.suggestion-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #f8f9fa;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.suggestion-item:hover {
+    background-color: #f8f9fa;
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-code {
+    font-family: 'Courier New', monospace;
+    font-weight: 600;
+    color: #0d6efd;
+    font-size: 0.9rem;
+}
+
+.suggestion-desc {
+    color: #6c757d;
+    font-size: 0.85rem;
+    margin-top: 0.25rem;
+}
+
+/* WBS Cards */
+.wbs-card {
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.wbs-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.wbs-card .card-title a {
+    color: #0d6efd;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.wbs-card .card-title a:hover {
+    color: #0a58ca;
+    text-decoration: underline;
+}
+
+/* Statistics */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 0.5rem;
+}
+
+.prefix-badge {
+    font-family: 'Courier New', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* Pagination */
+.pagination .page-link {
+    border: none;
+    padding: 0.5rem 0.75rem;
+    margin: 0 0.125rem;
+    border-radius: 0.375rem;
+    color: #0d6efd;
+    transition: all 0.2s ease;
+}
+
+.pagination .page-link:hover {
+    background-color: #e9ecef;
+    color: #0a58ca;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+/* Alert Styles */
+.alert {
+    border: none;
+    border-radius: 0.5rem;
+}
+
+/* Footer */
+footer {
+    border-top: 1px solid #dee2e6;
+    background: linear-gradient(to right, #f8f9fa, #ffffff);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .navbar-brand {
+        font-size: 1.25rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .stats-card {
+        text-align: center;
+        margin-top: 1rem;
+    }
+    
+    .search-suggestions {
+        position: fixed;
+        left: 1rem;
+        right: 1rem;
+        top: auto;
+        margin-top: 0.5rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .btn-group .btn {
+        font-size: 0.875rem;
+    }
+    
+    .pagination .page-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+    }
+}
+
+/* Loading Animation */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0d6efd;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Code Display */
+code {
+    color: #0d6efd;
+    background-color: #f8f9fa;
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-family: 'Courier New', monospace;
+}
+
+/* Button Enhancements */
+.btn {
+    border-radius: 0.375rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+    background-color: #0a58ca;
+    border-color: #0a58ca;
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary:hover {
+    transform: translateY(-1px);
+}
+
+/* Table Styles */
+.table {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.table thead th {
+    border-bottom: 2px solid #dee2e6;
+    font-weight: 600;
+}
+
+/* Utility Classes */
+.text-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.shadow-sm-hover:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Dark Mode Support (Optional) */
+@media (prefers-color-scheme: dark) {
+    body {
+        background-color: #212529;
+        color: #ffffff;
+    }
+    
+    .card {
+        background-color: #343a40;
+        color: #ffffff;
+    }
+    
+    .form-control {
+        background-color: #495057;
+        border-color: #6c757d;
+        color: #ffffff;
+    }
+    
+    .search-suggestions {
+        background-color: #343a40;
+        border-color: #6c757d;
+    }
+    
+    .suggestion-item:hover {
+        background-color: #495057;
+    }
+}

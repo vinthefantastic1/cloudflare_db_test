@@ -1,0 +1,378 @@
+{% extends "base.html" %}
+
+{% block title %}{{ item.WBS_ELEMENT_CDE }} - WBS Management System{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a href="{{ url_for('index') }}">
+                <i class="bi bi-house-fill"></i> Home
+            </a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">
+            {{ item.WBS_ELEMENT_CDE }}
+        </li>
+    </ol>
+</nav>
+
+<!-- Item Detail Card -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">
+                    <i class="bi bi-diagram-2-fill me-2"></i>
+                    WBS Element Details
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Basic Information Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="text-primary border-bottom pb-2 mb-3">
+                            <i class="bi bi-info-circle me-1"></i>Basic Information
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- WBS Code -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">WBS Code:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <code class="fs-5 text-primary">{{ item.WBS_ELEMENT_CDE or 'N/A' }}</code>
+                    </div>
+                </div>
+
+                <!-- WBS Name/Description -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">WBS Name:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <p class="mb-0">{{ item.WBS_ELEMENT_NME or 'No name available' }}</p>
+                    </div>
+                </div>
+
+                <!-- Project Information Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-folder me-1"></i>Project Information
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- Project ID -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Project ID:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-secondary fs-6">{{ item.PROJ_ID or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Project Name -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Project Name:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <p class="mb-0">{{ item.PROJ_NAME or 'No project name available' }}</p>
+                    </div>
+                </div>
+
+                <!-- Project Type & FY -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Project Type:</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="badge bg-primary">{{ item.PROJ_TYPE_CDE or 'N/A' }}</span>
+                    </div>
+                    <div class="col-sm-2">
+                        <strong class="text-muted">FY:</strong>
+                    </div>
+                    <div class="col-sm-3">
+                        <span class="badge bg-info">{{ item.PROJ_FY or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Organizational Information Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-building me-1"></i>Organizational Information
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- Company & Country -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Company:</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="badge bg-primary">{{ item.COMPANY_CDE or 'N/A' }}</span>
+                    </div>
+                    <div class="col-sm-2">
+                        <strong class="text-muted">Country:</strong>
+                    </div>
+                    <div class="col-sm-3">
+                        <span class="badge bg-info">{{ item.CNTRY_CODE or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Region & Sector -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Region:</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="badge bg-info">{{ item.RGN_ABBR_NME or 'N/A' }}</span>
+                    </div>
+                    <div class="col-sm-2">
+                        <strong class="text-muted">Sector:</strong>
+                    </div>
+                    <div class="col-sm-3">
+                        <span class="badge bg-primary">{{ item.SECTOR_CDE or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Business Area -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Business Area:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-primary me-2">{{ item.BUS_AREA_CDE or 'N/A' }}</span>
+                        <span class="text-muted">{{ item.BUS_AREA_NME or '' }}</span>
+                    </div>
+                </div>
+
+                <!-- Business Process -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Business Process:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-info me-2">{{ item.BUS_PROC_CDE or 'N/A' }}</span>
+                        <span class="text-muted">{{ item.BUS_PROC_NME or '' }}</span>
+                    </div>
+                </div>
+
+                <!-- Cost Centers Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-calculator me-1"></i>Cost Centers
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- Cost Centers -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Requesting:</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="badge bg-primary">{{ item.REQ_COST_CENTER_CDE or 'N/A' }}</span>
+                    </div>
+                    <div class="col-sm-2">
+                        <strong class="text-muted">Responsible:</strong>
+                    </div>
+                    <div class="col-sm-3">
+                        <span class="badge bg-info">{{ item.RESP_COST_CENTER_CDE or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Fund Center -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Fund Center:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-primary">{{ item.FUND_CENTER_CDE or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <!-- Status Information Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-flag me-1"></i>Status Information
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- Status Indicators -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">SAP Status:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-primary">{{ item.SAP_STATUS or 'N/A' }}</span>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Indicators:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {% if item.ACCT_IND == 'Y' %}
+                            <span class="badge bg-primary me-1">Account</span>
+                        {% endif %}
+                        {% if item.CLOSED_IND == 'Y' %}
+                            <span class="badge bg-secondary me-1">Closed</span>
+                        {% endif %}
+                        {% if item.RELEASED_IND == 'Y' %}
+                            <span class="badge bg-info me-1">Released</span>
+                        {% endif %}
+                        {% if not item.ACCT_IND and not item.CLOSED_IND and not item.RELEASED_IND %}
+                            <span class="text-muted">No status indicators</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Timestamps Section -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6 class="text-primary border-bottom pb-2 mb-3 mt-4">
+                            <i class="bi bi-clock me-1"></i>Timestamps
+                        </h6>
+                    </div>
+                </div>
+
+                <!-- Create & Update Dates -->
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong class="text-muted">Created:</strong>
+                    </div>
+                    <div class="col-sm-4">
+                        <span class="badge bg-primary">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            {{ item.CREATE_DATE or 'N/A' }}
+                        </span>
+                    </div>
+                    <div class="col-sm-2">
+                        <strong class="text-muted">Updated:</strong>
+                    </div>
+                    <div class="col-sm-3">
+                        <span class="badge bg-info">
+                            <i class="bi bi-calendar-check me-1"></i>
+                            {{ item.LAST_UPDATE_DATE or 'N/A' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <hr>
+                        <h6 class="text-muted mb-3">Quick Actions</h6>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('{{ item.WBS_ELEMENT_CDE }}')">
+                                <i class="bi bi-clipboard me-1"></i>Copy Code
+                            </button>
+                            {% if item.PROJ_ID %}
+                            <a href="{{ url_for('index', search=item.PROJ_ID) }}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-search me-1"></i>Find by Project
+                            </a>
+                            {% endif %}
+                            {% if item.COMPANY_CDE %}
+                            <a href="{{ url_for('index', search=item.COMPANY_CDE) }}" class="btn btn-info btn-sm">
+                                <i class="bi bi-building me-1"></i>Find by Company
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Info -->
+    <div class="col-lg-4">
+        <!-- WBS Code Analysis -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-info-circle-fill me-1"></i>Code Analysis
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if item.WBS_ELEMENT_CDE %}
+                    {% set code_parts = item.WBS_ELEMENT_CDE.split('-') %}
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <strong>Prefix:</strong> 
+                            <span class="badge bg-primary">{{ code_parts[0] if code_parts|length > 0 else 'N/A' }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Project ID:</strong> 
+                            <span class="badge bg-secondary">{{ code_parts[1] if code_parts|length > 1 else 'N/A' }}</span>
+                        </li>
+                        <li class="mb-2">
+                            <strong>Components:</strong> 
+                            <span class="badge bg-info">{{ code_parts|length }} parts</span>
+                        </li>
+                        <li class="mb-0">
+                            <strong>Length:</strong> 
+                            <span class="badge bg-success">{{ item.WBS_ELEMENT_CDE|length }} chars</span>
+                        </li>
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">No code available for analysis</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="bi bi-arrow-left-right me-1"></i>Navigation
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="bi bi-arrow-left me-1"></i>Back to List
+                    </a>
+                    {% if item.WBS_ELEMENT_CDE and '-' in item.WBS_ELEMENT_CDE %}
+                        <a href="{{ url_for('index', search=item.WBS_ELEMENT_CDE.split('-')[0]) }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-collection me-1"></i>View Similar Items
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(function() {
+        // Show a temporary success message
+        const button = event.target.closest('button');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="bi bi-check me-1"></i>Copied!';
+        button.classList.remove('btn-outline-primary');
+        button.classList.add('btn-success');
+        
+        setTimeout(function() {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-primary');
+        }, 2000);
+    }).catch(function(err) {
+        console.error('Failed to copy text: ', err);
+    });
+}
+</script>
+{% endblock %}

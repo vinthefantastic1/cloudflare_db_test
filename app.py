@@ -162,7 +162,7 @@ class WBSLister:
             return cached_result
         
         # Filter out NULL records for better performance
-        sql = "SELECT * FROM wbs WHERE WBS_ELEMENT_CDE IS NOT NULL ORDER BY WBS_ELEMENT_CDE"
+        sql = "SELECT * FROM wbs_2 WHERE WBS_ELEMENT_CDE IS NOT NULL ORDER BY WBS_ELEMENT_CDE"
         
         if limit:
             sql += f" LIMIT {limit} OFFSET {offset}"
@@ -193,7 +193,7 @@ class WBSLister:
             return cached_result
         
         # Only count non-NULL records for accuracy
-        result = self.d1.query("SELECT COUNT(*) as total FROM wbs WHERE WBS_ELEMENT_CDE IS NOT NULL")
+        result = self.d1.query("SELECT COUNT(*) as total FROM wbs_2 WHERE WBS_ELEMENT_CDE IS NOT NULL")
         extracted_results = self._extract_results(result)
         
         count = 0
@@ -207,8 +207,8 @@ class WBSLister:
     def search_wbs_items(self, search_term: str) -> list[dict]:
         """Search for WBS items by code or description"""
         sql = """
-        SELECT * FROM wbs 
-        WHERE WBS_ELEMENT_CDE LIKE ? OR WBS_ELEMENT_DESC LIKE ?
+        SELECT * FROM wbs_2 
+        WHERE WBS_ELEMENT_CDE LIKE ? OR WBS_ELEMENT_NME LIKE ?
         ORDER BY WBS_ELEMENT_CDE
         """
         search_pattern = f"%{search_term}%"
@@ -228,7 +228,7 @@ class WBSLister:
         # Count by prefix
         prefix_sql = """
         SELECT SUBSTR(WBS_ELEMENT_CDE, 1, 2) as prefix, COUNT(*) as count
-        FROM wbs 
+        FROM wbs_2 
         WHERE WBS_ELEMENT_CDE IS NOT NULL
         GROUP BY SUBSTR(WBS_ELEMENT_CDE, 1, 2)
         ORDER BY count DESC
@@ -344,7 +344,7 @@ def api_search():
         for item in items:
             suggestions.append({
                 'code': item.get('WBS_ELEMENT_CDE', ''),
-                'description': item.get('WBS_ELEMENT_DESC', ''),
+                'description': item.get('WBS_ELEMENT_NME', ''),
                 'created': item.get('CREATE_DATE', '')
             })
             
@@ -410,4 +410,8 @@ def internal_error(error):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='127.0.0.1', port=5000)
+    # Use 0.0.0.0 for Docker compatibility, 127.0.0.1 for local development
+    import os
+    host = '0.0.0.0' if os.getenv('FLASK_ENV') == 'production' else '127.0.0.1'
+    debug = os.getenv('FLASK_ENV') != 'production'
+    app.run(debug=debug, host=host, port=5000)
