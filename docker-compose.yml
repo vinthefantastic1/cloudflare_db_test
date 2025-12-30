@@ -11,6 +11,14 @@ services:
       - FLASK_ENV=production
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONUNBUFFERED=1
+      # Cloudflare D1 Database Configuration
+      # Replace these values with your actual Cloudflare credentials
+      # OR create a .env file and uncomment the env_file line below
+      - CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
+      - CF_D1_DATABASE_ID=${CF_D1_DATABASE_ID}
+      - CF_API_TOKEN=${CF_API_TOKEN}
+    # env_file:
+    #   - .env
     volumes:
       # Persist database files
       - ./data:/app/data
